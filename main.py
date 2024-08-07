@@ -9,11 +9,13 @@ from ast import literal_eval
 
 load_dotenv()
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 
-ALLOWED_BID_CONNECTIONS = set(literal_eval(os.getenv('ALLOWED_BID_CONNECTIONS', '[]')))
-TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
-OPENAI_API_KEY = os.getenv('GPT4_API_KEY')
+ALLOWED_BID_CONNECTIONS = set(literal_eval(os.getenv("ALLOWED_BID_CONNECTIONS", "[]")))
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+OPENAI_API_KEY = os.getenv("GPT4_API_KEY")
 GPT_MODEL = "gpt-4o-mini"
 
 bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
@@ -27,9 +29,9 @@ def validate_business_connection(connection_id):
 
 
 def get_message_content(message):
-    if message.content_type == 'text':
-        return message.text[:200] + ('...' if len(message.text) > 200 else '')
-    elif message.content_type == 'voice':
+    if message.content_type == "text":
+        return message.text[:200] + ("..." if len(message.text) > 200 else "")
+    elif message.content_type == "voice":
         return f"Voice message (duration: {message.voice.duration}s)"
     else:
         return f"{message.content_type} content"
@@ -40,8 +42,8 @@ def improve_transcription(transcription):
         model=GPT_MODEL,
         messages=[
             {"role": "system", "content": IMPROVEMENT_PROMPT},
-            {"role": "user", "content": transcription}
-        ]
+            {"role": "user", "content": transcription},
+        ],
     )
     return response.choices[0].message.content
 
@@ -53,13 +55,15 @@ def handle_voice(message, is_group_chat=False):
         #     return
 
         if message.business_connection_id:
-            logging.info(f"Processing business voice message with connection ID: {message.business_connection_id}")
+            logging.info(
+                f"Processing business voice message with connection ID: {message.business_connection_id}"
+            )
             if not validate_business_connection(message.business_connection_id):
                 return
 
         file_info = bot.get_file(message.voice.file_id)
         downloaded_file = bot.download_file(file_info.file_path)
-        
+
         # Save the voice message temporarily
         with open("voice.ogg", "wb") as new_file:
             new_file.write(downloaded_file)
@@ -81,34 +85,39 @@ def handle_voice(message, is_group_chat=False):
             logging.info(f"Enhanced message: {improved_transcription}")
 
             if is_group_chat:
-                sender = message.from_user.username or f"{message.from_user.first_name} {message.from_user.last_name}".strip() if hasattr(message, "from_user") else ""
+                sender = (
+                    message.from_user.username
+                    or f"{message.from_user.first_name} {message.from_user.last_name}".strip()
+                    if hasattr(message, "from_user")
+                    else ""
+                )
                 title = f"*Voice message transcription from {sender} (thanks to bot created by @denyamsk)*"
             else:
                 user = message.from_user if hasattr(message, "from_user") else message.chat
                 username = user.username or f"{user.first_name} {user.last_name}".strip()
                 title = f"*Voice message transcription from {username} (thanks to bot created by @denyamsk)*"
-                
+
             # Send transcription back to the business chat
             bot.send_message(
-                message.chat.id, 
+                message.chat.id,
                 f"{title}\n{improved_transcription}",
-                business_connection_id=getattr(message, 'business_connection_id', None),
-                parse_mode='Markdown'
+                business_connection_id=getattr(message, "business_connection_id", None),
+                parse_mode="Markdown",
             )
         else:
             bot.send_message(
-                message.chat.id, 
+                message.chat.id,
                 "Failed to transcribe voice message.",
-                business_connection_id=getattr(message, 'business_connection_id', None)
+                business_connection_id=getattr(message, "business_connection_id", None),
             )
 
     except Exception as e:
         logging.exception(f"An error occurred: {e}")
         bot.send_message(
-            message.chat.id, 
+            message.chat.id,
             f"An error occurred: {e}",
-            business_connection_id=getattr(message, 'business_connection_id', None),
-            parse_mode='Markdown'
+            business_connection_id=getattr(message, "business_connection_id", None),
+            parse_mode="Markdown",
         )
 
     finally:
@@ -124,18 +133,18 @@ def handle_business_update(update):
 
     if not message:
         return
-    
+
     direction = "incoming" if hasattr(message, "from_user") else "outgoing"
     user = message.from_user if hasattr(message, "from_user") else message.chat
     username = user.username or f"{user.first_name} {user.last_name}".strip()
 
     log_message = f"{direction.capitalize()} business message - User: {username} (ID: {user.id}), Chat ID: {message.chat.id}, Type: {message.content_type}, Content: {get_message_content(message)}"
     logging.info(log_message)
-    
-    if message.content_type == 'voice' and message.chat.type in ['group', 'supergroup']:
+
+    if message.content_type == "voice" and message.chat.type in ["group", "supergroup"]:
         logging.info("Handling voice in the group chat")
         handle_voice(message, is_group_chat=True)
-    elif message.content_type == 'voice':
+    elif message.content_type == "voice":
         handle_voice(message)
 
     # elif update_type == 'business_connection':
@@ -151,16 +160,16 @@ def custom_polling():
     while True:
         try:
             updates = bot.get_updates(
-                offset=offset, 
-                timeout=30, 
+                offset=offset,
+                timeout=30,
                 allowed_updates=[
-                    'message',
-                    'edited_message',
-                    'business_message',
-                    'edited_business_message',
-                    'deleted_business_messages',
-                    'business_connection'
-                ]
+                    "message",
+                    "edited_message",
+                    "business_message",
+                    "edited_business_message",
+                    "deleted_business_messages",
+                    "business_connection",
+                ],
             )
             for update in updates:
                 handle_business_update(update)
@@ -172,7 +181,9 @@ def custom_polling():
 
 @bot.message_handler(func=lambda message: True)
 def log_all_messages(message):
-    logging.info(f"Regular message - User: {message.from_user.username or message.from_user.first_name} (ID: {message.from_user.id}), Chat ID: {message.chat.id}, Content: {get_message_content(message)}")
+    logging.info(
+        f"Regular message - User: {message.from_user.username or message.from_user.first_name} (ID: {message.from_user.id}), Chat ID: {message.chat.id}, Content: {get_message_content(message)}"
+    )
 
 
 if __name__ == "__main__":
