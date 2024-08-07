@@ -48,12 +48,11 @@ def improve_transcription(transcription):
     return response.choices[0].message.content
 
 
+from io import BytesIO
+
+
 def handle_voice(message, is_group_chat=False):
     try:
-        # Check if it's a business message
-        # if not hasattr(message, 'business_connection_id'):
-        #     return
-
         if message.business_connection_id:
             logging.info(
                 f"Processing business voice message with connection ID: {message.business_connection_id}"
@@ -64,16 +63,16 @@ def handle_voice(message, is_group_chat=False):
         file_info = bot.get_file(message.voice.file_id)
         downloaded_file = bot.download_file(file_info.file_path)
 
-        # Save the voice message temporarily
-        with open("voice.ogg", "wb") as new_file:
-            new_file.write(downloaded_file)
+        # Use BytesIO instead of creating a real file
+        voice_file = BytesIO(downloaded_file)
+        voice_file.name = "voice.ogg"  # Set a name for the file-like object
 
         # Transcribe using Whisper API
         transcription_response = requests.post(
             "https://api.openai.com/v1/audio/transcriptions",
             headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
             data={"model": "whisper-1"},
-            files={"file": open("voice.ogg", "rb")},
+            files={"file": voice_file},
         )
 
         if transcription_response.status_code == 200:
@@ -119,10 +118,6 @@ def handle_voice(message, is_group_chat=False):
             business_connection_id=getattr(message, "business_connection_id", None),
             parse_mode="Markdown",
         )
-
-    finally:
-        if os.path.exists("voice.ogg"):
-            os.remove("voice.ogg")
 
 
 def handle_business_update(update):
