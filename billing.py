@@ -36,6 +36,12 @@ class PaymentStorage:
         cursor.execute('SELECT * FROM payments WHERE charge_id = ?', (charge_id,))
         return cursor.fetchone()
 
+    def get_user_balance(self, user_id):
+        cursor = self.conn.cursor()
+        cursor.execute('SELECT SUM(amount) FROM payments WHERE user_id = ?', (user_id,))
+        result = cursor.fetchone()
+        return result[0] if result[0] is not None else 0
+
 
 class BillingManager:
     def __init__(self, bot: TeleBot):
@@ -93,6 +99,10 @@ class BillingManager:
         
         # Here you would typically update the user's access in your database
         self.bot.send_message(chat_id, "Payment successful! You now have access to premium features.")
+
+    def get_user_balance(self, user_id):
+        balance = self.storage.get_user_balance(user_id)
+        return balance
 
     def handle_update(self, update):
         # import ipdb; ipdb.set_trace()

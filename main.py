@@ -170,6 +170,13 @@ def pay_command(message):
     billing_manager.send_invoice(message.chat.id)
 
 
+@bot.message_handler(commands=['status'])
+def status_command(message):
+    user_id = message.from_user.id
+    balance = billing_manager.get_user_balance(user_id)
+    bot.reply_to(message, f"Your current balance is {balance} Telegram Stars.")
+
+
 @bot.pre_checkout_query_handler(func=lambda query: True)
 def process_pre_checkout_query(pre_checkout_query):
     billing_manager.process_pre_checkout_query(pre_checkout_query)
