@@ -1,7 +1,7 @@
 PYTHON_VERSION := 3.11.2
 VENV_NAME := tlgrm_business_voice_converter
 
-.PHONY: setup activate delete clean update
+.PHONY: setup activate delete clean update test
 
 setup:
 	pyenv install $(PYTHON_VERSION) -s
@@ -22,3 +22,6 @@ clean: delete
 
 update:
 	pip install --upgrade -r requirements.txt
+
+test:
+	pytest
